@@ -28,7 +28,7 @@ interface User {
   lastActive: string;
 }
 
-type UserRank = 'GUEST' | 'MEMBER' | 'MODERATOR' | 'ADMIN' | 'OWNER';
+type UserRank = 'GUEST' | 'MEMBER' | 'MODERATOR' | 'ADMIN' | 'OWNER' | 'HEAD_PROJECT';
 
 interface RankPermissions {
   canCreateArticles: boolean;
@@ -79,6 +79,14 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canManageUsers: true,
     canChangeRanks: true,
     canAccessAnalytics: true
+  },
+  HEAD_PROJECT: {
+    canCreateArticles: true,
+    canEditArticles: true,
+    canDeleteArticles: true,
+    canManageUsers: true,
+    canChangeRanks: true,
+    canAccessAnalytics: true
   }
 };
 
@@ -87,7 +95,8 @@ const RANK_COLORS: Record<UserRank, string> = {
   MEMBER: 'text-tech-cyan',
   MODERATOR: 'text-primary',
   ADMIN: 'text-accent',
-  OWNER: 'text-yellow-400'
+  OWNER: 'text-yellow-400',
+  HEAD_PROJECT: 'text-red-400'
 };
 
 const RANK_ICONS: Record<UserRank, string> = {
@@ -95,14 +104,15 @@ const RANK_ICONS: Record<UserRank, string> = {
   MEMBER: 'Users',
   MODERATOR: 'Shield',
   ADMIN: 'Crown',
-  OWNER: 'Zap'
+  OWNER: 'Zap',
+  HEAD_PROJECT: 'Flame'
 };
 
 const Index = () => {
   const [currentUser, setCurrentUser] = useState<User>({
     id: 1,
-    username: "GameDev_Owner",
-    rank: "OWNER",
+    username: "Head_Project",
+    rank: "HEAD_PROJECT",
     joinDate: "2024-01-01",
     lastActive: "2024-09-21"
   });
@@ -110,8 +120,8 @@ const Index = () => {
   const [users, setUsers] = useState<User[]>([
     {
       id: 1,
-      username: "GameDev_Owner",
-      rank: "OWNER",
+      username: "Head_Project",
+      rank: "HEAD_PROJECT",
       joinDate: "2024-01-01",
       lastActive: "2024-09-21"
     },
@@ -226,11 +236,11 @@ const Index = () => {
   const handleChangeUserRank = (userId: number, newRank: UserRank) => {
     if (!canPerformAction('canChangeRanks')) return;
     
-    // Prevent changing owner rank or promoting to owner (unless current user is owner)
-    if (newRank === 'OWNER' && currentUser.rank !== 'OWNER') return;
+    // Prevent changing head project rank or promoting to head project/owner (unless current user is head project)
+    if ((newRank === 'OWNER' || newRank === 'HEAD_PROJECT') && currentUser.rank !== 'HEAD_PROJECT') return;
     
     const targetUser = users.find(u => u.id === userId);
-    if (targetUser?.rank === 'OWNER' && currentUser.rank !== 'OWNER') return;
+    if ((targetUser?.rank === 'OWNER' || targetUser?.rank === 'HEAD_PROJECT') && currentUser.rank !== 'HEAD_PROJECT') return;
     
     setUsers(users.map(user => 
       user.id === userId ? { ...user, rank: newRank } : user
@@ -241,7 +251,7 @@ const Index = () => {
     if (!canPerformAction('canManageUsers')) return;
     
     const targetUser = users.find(u => u.id === userId);
-    if (targetUser?.rank === 'OWNER') return; // Can't delete owner
+    if (targetUser?.rank === 'OWNER' || targetUser?.rank === 'HEAD_PROJECT') return; // Can't delete owner or head project
     if (userId === currentUser.id) return; // Can't delete self
     
     setUsers(users.filter(user => user.id !== userId));
@@ -249,6 +259,7 @@ const Index = () => {
   
   const getRankBadgeColor = (rank: UserRank) => {
     switch(rank) {
+      case 'HEAD_PROJECT': return 'bg-red-400/20 text-red-400 border-red-400 animate-glow';
       case 'OWNER': return 'bg-yellow-400/20 text-yellow-400 border-yellow-400';
       case 'ADMIN': return 'bg-accent/20 text-accent border-accent';
       case 'MODERATOR': return 'bg-primary/20 text-primary border-primary';
@@ -439,7 +450,8 @@ const Index = () => {
                             <SelectItem value="MEMBER">MEMBER</SelectItem>
                             <SelectItem value="MODERATOR">MODERATOR</SelectItem>
                             {canPerformAction('canChangeRanks') && <SelectItem value="ADMIN">ADMIN</SelectItem>}
-                            {currentUser.rank === 'OWNER' && <SelectItem value="OWNER">OWNER</SelectItem>}
+                            {currentUser.rank === 'HEAD_PROJECT' && <SelectItem value="OWNER">OWNER</SelectItem>}
+                            {currentUser.rank === 'HEAD_PROJECT' && <SelectItem value="HEAD_PROJECT">HEAD PROJECT</SelectItem>}
                           </SelectContent>
                         </Select>
                         <Button onClick={handleAddUser} className="w-full font-orbitron">
@@ -484,11 +496,12 @@ const Index = () => {
                                   <SelectItem value="MEMBER">MEMBER</SelectItem>
                                   <SelectItem value="MODERATOR">MODERATOR</SelectItem>
                                   <SelectItem value="ADMIN">ADMIN</SelectItem>
-                                  {currentUser.rank === 'OWNER' && <SelectItem value="OWNER">OWNER</SelectItem>}
+                                  {currentUser.rank === 'HEAD_PROJECT' && <SelectItem value="OWNER">OWNER</SelectItem>}
+                                  {currentUser.rank === 'HEAD_PROJECT' && <SelectItem value="HEAD_PROJECT">HEAD PROJECT</SelectItem>}
                                 </SelectContent>
                               </Select>
                             )}
-                            {canPerformAction('canManageUsers') && user.id !== currentUser.id && user.rank !== 'OWNER' && (
+                            {canPerformAction('canManageUsers') && user.id !== currentUser.id && user.rank !== 'OWNER' && user.rank !== 'HEAD_PROJECT' && (
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button variant="destructive" size="sm">
@@ -579,7 +592,7 @@ const Index = () => {
                     </CardHeader>
                     <CardContent>
                       <div className="text-3xl font-orbitron font-bold text-primary">
-                        {users.filter(u => u.rank === 'ADMIN' || u.rank === 'OWNER').length}
+                        {users.filter(u => u.rank === 'ADMIN' || u.rank === 'OWNER' || u.rank === 'HEAD_PROJECT').length}
                       </div>
                       <p className="text-sm text-muted-foreground font-inter">Администраторов</p>
                     </CardContent>
