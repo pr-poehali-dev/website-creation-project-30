@@ -564,7 +564,7 @@ const Index = () => {
                   <Icon name={RANK_ICONS[currentUser.rank]} size={12} className="mr-1" />
                   {currentUser.rank}
                 </Badge>
-                <span className="text-sm font-inter text-muted-foreground">
+                <span className="text-sm font-inter text-muted-foreground mx-0">
                   {currentUser.username}
                 </span>
               </div>
