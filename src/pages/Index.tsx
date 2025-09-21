@@ -37,6 +37,25 @@ interface RankPermissions {
   canManageUsers: boolean;
   canChangeRanks: boolean;
   canAccessAnalytics: boolean;
+  canManageFactions: boolean;
+  canEditInterface: boolean;
+}
+
+interface Faction {
+  id: number;
+  name: string;
+  description: string;
+  color: string;
+  leader: string;
+  members: number;
+  founded: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'WAR' | 'ALLIANCE';
+}
+
+interface EditableText {
+  id: string;
+  text: string;
+  isEditing: boolean;
 }
 
 const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
@@ -46,7 +65,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: false,
     canManageUsers: false,
     canChangeRanks: false,
-    canAccessAnalytics: false
+    canAccessAnalytics: false,
+    canManageFactions: false,
+    canEditInterface: false
   },
   MEMBER: {
     canCreateArticles: true,
@@ -54,7 +75,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: false,
     canManageUsers: false,
     canChangeRanks: false,
-    canAccessAnalytics: false
+    canAccessAnalytics: false,
+    canManageFactions: false,
+    canEditInterface: false
   },
   MODERATOR: {
     canCreateArticles: true,
@@ -62,7 +85,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: true,
     canManageUsers: false,
     canChangeRanks: false,
-    canAccessAnalytics: true
+    canAccessAnalytics: true,
+    canManageFactions: false,
+    canEditInterface: false
   },
   ADMIN: {
     canCreateArticles: true,
@@ -70,7 +95,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: true,
     canManageUsers: true,
     canChangeRanks: true,
-    canAccessAnalytics: true
+    canAccessAnalytics: true,
+    canManageFactions: true,
+    canEditInterface: false
   },
   OWNER: {
     canCreateArticles: true,
@@ -78,7 +105,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: true,
     canManageUsers: true,
     canChangeRanks: true,
-    canAccessAnalytics: true
+    canAccessAnalytics: true,
+    canManageFactions: true,
+    canEditInterface: false
   },
   HEAD_PROJECT: {
     canCreateArticles: true,
@@ -86,7 +115,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canDeleteArticles: true,
     canManageUsers: true,
     canChangeRanks: true,
-    canAccessAnalytics: true
+    canAccessAnalytics: true,
+    canManageFactions: true,
+    canEditInterface: true
   }
 };
 
@@ -191,10 +222,75 @@ const Index = () => {
   });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   
+  const [factions, setFactions] = useState<Faction[]>([
+    {
+      id: 1,
+      name: "Кибер-Империя",
+      description: "Доминирующая фракция в мире высоких технологий",
+      color: "tech-cyan",
+      leader: "Emperor_Nexus",
+      members: 1247,
+      founded: "2024-01-15",
+      status: "ACTIVE"
+    },
+    {
+      id: 2,
+      name: "Пиксельные Мятежники",
+      description: "Революционеры цифрового мира",
+      color: "accent",
+      leader: "Rebel_Matrix",
+      members: 892,
+      founded: "2024-03-08",
+      status: "WAR"
+    },
+    {
+      id: 3,
+      name: "Нейро-Альянс",
+      description: "Объединение ИИ-разработчиков",
+      color: "primary",
+      leader: "AI_Mastermind",
+      members: 543,
+      founded: "2024-05-20",
+      status: "ALLIANCE"
+    }
+  ]);
+  
+  const [newFaction, setNewFaction] = useState({
+    name: "",
+    description: "",
+    color: "tech-cyan",
+    leader: ""
+  });
+  
+  const [editableTexts, setEditableTexts] = useState<Record<string, EditableText>>({
+    heroTitle: { id: "heroTitle", text: "FUTURE IS NOW", isEditing: false },
+    heroSubtitle: { id: "heroSubtitle", text: "Исследуем границы игровых технологий и делимся инсайдерской информацией", isEditing: false },
+    articlesTitle: { id: "articlesTitle", text: "ПОСЛЕДНИЕ СТАТЬИ", isEditing: false },
+    blogTitle: { id: "blogTitle", text: "TECH BLOG", isEditing: false }
+  });
+  
   const currentPermissions = RANK_PERMISSIONS[currentUser.rank];
   
   const canPerformAction = (action: keyof RankPermissions): boolean => {
     return currentPermissions[action];
+  };
+  
+  const handleEditText = (id: string, newText: string) => {
+    if (!canPerformAction('canEditInterface')) return;
+    
+    setEditableTexts(prev => ({
+      ...prev,
+      [id]: { ...prev[id], text: newText, isEditing: false }
+    }));
+  };
+  
+  const toggleEdit = (id: string) => {
+    if (!canPerformAction('canEditInterface')) return;
+    
+    setEditableTexts(prev => ({
+      ...prev,
+      [id]: { ...prev[id], isEditing: !prev[id].isEditing }
+    }));
   };
 
   const handleAddArticle = () => {
@@ -267,6 +363,69 @@ const Index = () => {
       default: return 'bg-muted text-muted-foreground border-muted-foreground';
     }
   };
+  
+  const getFactionStatusColor = (status: Faction['status']) => {
+    switch(status) {
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400 border-green-400';
+      case 'WAR': return 'bg-red-500/20 text-red-400 border-red-400';
+      case 'ALLIANCE': return 'bg-blue-500/20 text-blue-400 border-blue-400';
+      case 'INACTIVE': return 'bg-gray-500/20 text-gray-400 border-gray-400';
+    }
+  };
+  
+  const handleAddFaction = () => {
+    if (!canPerformAction('canManageFactions')) return;
+    
+    if (newFaction.name && newFaction.description && newFaction.leader) {
+      const faction: Faction = {
+        id: Date.now(),
+        ...newFaction,
+        members: 0,
+        founded: new Date().toISOString().split('T')[0],
+        status: 'ACTIVE'
+      };
+      setFactions([...factions, faction]);
+      setNewFaction({ name: "", description: "", color: "tech-cyan", leader: "" });
+    }
+  };
+  
+  const handleDeleteFaction = (id: number) => {
+    if (!canPerformAction('canManageFactions')) return;
+    setFactions(factions.filter(faction => faction.id !== id));
+  };
+  
+  const EditableText = ({ id, className = "", placeholder = "" }: { id: string; className?: string; placeholder?: string }) => {
+    const textData = editableTexts[id];
+    
+    if (!textData) return null;
+    
+    if (textData.isEditing && canPerformAction('canEditInterface')) {
+      return (
+        <Input
+          value={textData.text}
+          onChange={(e) => setEditableTexts(prev => ({ ...prev, [id]: { ...prev[id], text: e.target.value } }))}
+          onBlur={() => handleEditText(id, textData.text)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleEditText(id, textData.text);
+            if (e.key === 'Escape') toggleEdit(id);
+          }}
+          className={`${className} bg-transparent border-tech-cyan/50`}
+          placeholder={placeholder}
+          autoFocus
+        />
+      );
+    }
+    
+    return (
+      <span
+        className={`${className} ${canPerformAction('canEditInterface') ? 'cursor-pointer hover:bg-tech-cyan/10 hover:outline hover:outline-1 hover:outline-tech-cyan/50 rounded px-1 transition-all' : ''}`}
+        onClick={() => canPerformAction('canEditInterface') && toggleEdit(id)}
+        title={canPerformAction('canEditInterface') ? 'Нажмите для редактирования' : ''}
+      >
+        {textData.text}
+      </span>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -275,7 +434,7 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-orbitron font-bold text-tech-cyan animate-glow">
-              TECH BLOG
+              <EditableText id="blogTitle" className="text-3xl font-orbitron font-bold text-tech-cyan animate-glow" />
             </h1>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -307,10 +466,10 @@ const Index = () => {
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center max-w-4xl mx-auto">
             <h2 className="text-5xl md:text-7xl font-orbitron font-black text-transparent bg-gradient-to-r from-tech-cyan via-primary to-accent bg-clip-text mb-6 animate-float">
-              FUTURE IS NOW
+              <EditableText id="heroTitle" className="text-5xl md:text-7xl font-orbitron font-black text-transparent bg-gradient-to-r from-tech-cyan via-primary to-accent bg-clip-text" />
             </h2>
             <p className="text-xl md:text-2xl font-inter text-muted-foreground mb-8">
-              Исследуем границы игровых технологий и делимся инсайдерской информацией
+              <EditableText id="heroSubtitle" className="text-xl md:text-2xl font-inter text-muted-foreground" />
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <Badge variant="outline" className="text-tech-cyan border-tech-cyan font-orbitron">
@@ -351,7 +510,7 @@ const Index = () => {
             </div>
             
             <Tabs defaultValue="articles" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="articles" className="font-orbitron" disabled={!canPerformAction('canCreateArticles')}>
                   <Icon name="FileText" size={16} className="mr-2" />
                   СТАТЬИ
@@ -359,6 +518,10 @@ const Index = () => {
                 <TabsTrigger value="users" className="font-orbitron" disabled={!canPerformAction('canManageUsers')}>
                   <Icon name="Users" size={16} className="mr-2" />
                   ПОЛЬЗОВАТЕЛИ
+                </TabsTrigger>
+                <TabsTrigger value="factions" className="font-orbitron" disabled={!canPerformAction('canManageFactions')}>
+                  <Icon name="Swords" size={16} className="mr-2" />
+                  ФРАКЦИИ
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="font-orbitron" disabled={!canPerformAction('canAccessAnalytics')}>
                   <Icon name="BarChart3" size={16} className="mr-2" />
@@ -555,6 +718,143 @@ const Index = () => {
                 </div>
               </TabsContent>
               
+              <TabsContent value="factions" className="space-y-4">
+                <div className="flex gap-4 mb-6">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="font-orbitron"
+                        disabled={!canPerformAction('canManageFactions')}
+                      >
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        СОЗДАТЬ ФРАКЦИЮ
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle className="font-orbitron text-tech-cyan">НОВАЯ ФРАКЦИЯ</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="Название фракции"
+                          value={newFaction.name}
+                          onChange={(e) => setNewFaction({...newFaction, name: e.target.value})}
+                          className="font-inter"
+                        />
+                        <Input
+                          placeholder="Лидер фракции"
+                          value={newFaction.leader}
+                          onChange={(e) => setNewFaction({...newFaction, leader: e.target.value})}
+                          className="font-inter"
+                        />
+                        <Textarea
+                          placeholder="Описание фракции"
+                          value={newFaction.description}
+                          onChange={(e) => setNewFaction({...newFaction, description: e.target.value})}
+                          rows={3}
+                          className="font-inter"
+                        />
+                        <Select value={newFaction.color} onValueChange={(value) => setNewFaction({...newFaction, color: value})}>
+                          <SelectTrigger className="font-inter">
+                            <SelectValue placeholder="Выберите цвет фракции" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tech-cyan">Cyan</SelectItem>
+                            <SelectItem value="accent">Red</SelectItem>
+                            <SelectItem value="primary">Blue</SelectItem>
+                            <SelectItem value="yellow-400">Yellow</SelectItem>
+                            <SelectItem value="green-400">Green</SelectItem>
+                            <SelectItem value="purple-400">Purple</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button onClick={handleAddFaction} className="w-full font-orbitron">
+                          <Icon name="Swords" size={16} className="mr-2" />
+                          СОЗДАТЬ ФРАКЦИЮ
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  {canPerformAction('canEditInterface') && (
+                    <Badge className="bg-red-400/20 text-red-400 border-red-400 font-orbitron animate-pulse">
+                      <Icon name="Edit" size={14} className="mr-1" />
+                      РЕЖИМ РЕДАКТИРОВАНИЯ ИНТЕРФЕЙСА
+                    </Badge>
+                  )}
+                </div>
+                
+                <div className="grid gap-4">
+                  {factions.map((faction) => (
+                    <Card key={faction.id} className="bg-card/80 border border-border/50 hover:border-tech-cyan/50 transition-colors">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Icon name="Swords" size={24} className={`text-${faction.color}`} />
+                            <div>
+                              <CardTitle className="font-orbitron text-xl">{faction.name}</CardTitle>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className={`text-xs ${getFactionStatusColor(faction.status)}`}>
+                                  {faction.status}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground font-inter">
+                                  Основана: {new Date(faction.founded).toLocaleDateString('ru-RU')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {canPerformAction('canManageFactions') && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Icon name="Trash2" size={14} />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-orbitron">Удалить фракцию?</AlertDialogTitle>
+                                    <AlertDialogDescription className="font-inter">
+                                      Это действие нельзя отменить. Фракция {faction.name} будет удалена навсегда.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="font-inter">Отмена</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteFaction(faction.id)}
+                                      className="font-orbitron"
+                                    >
+                                      Удалить
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground font-inter mb-4">{faction.description}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                          <div>
+                            <span className="text-muted-foreground font-inter">Лидер:</span>
+                            <p className="font-orbitron text-tech-cyan">{faction.leader}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-inter">Участников:</span>
+                            <p className="font-orbitron">{faction.members.toLocaleString()}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-inter">Статус:</span>
+                            <p className={`font-orbitron text-${faction.color}`}>{faction.status}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+              
               <TabsContent value="analytics" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="bg-card/80">
@@ -608,7 +908,7 @@ const Index = () => {
       <section className="py-16">
         <div className="container mx-auto px-4">
           <h3 className="text-3xl font-orbitron font-bold text-center mb-12">
-            ПОСЛЕДНИЕ <span className="text-tech-cyan">СТАТЬИ</span>
+            <EditableText id="articlesTitle" className="text-3xl font-orbitron font-bold" /> <span className="text-tech-cyan">СТАТЬИ</span>
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {articles.map((article) => (
