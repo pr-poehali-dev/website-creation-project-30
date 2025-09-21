@@ -39,6 +39,21 @@ interface RankPermissions {
   canAccessAnalytics: boolean;
   canManageFactions: boolean;
   canEditInterface: boolean;
+  canManageEvents: boolean;
+  canGlobalEdit: boolean;
+}
+
+interface GameEvent {
+  id: number;
+  title: string;
+  description: string;
+  type: 'BATTLE' | 'TOURNAMENT' | 'RAID' | 'MEETING' | 'CELEBRATION';
+  startDate: string;
+  endDate: string;
+  participants: string[];
+  rewards: string;
+  status: 'UPCOMING' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdBy: string;
 }
 
 interface Faction {
@@ -67,7 +82,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: false,
     canAccessAnalytics: false,
     canManageFactions: false,
-    canEditInterface: false
+    canEditInterface: false,
+    canManageEvents: false,
+    canGlobalEdit: false
   },
   MEMBER: {
     canCreateArticles: true,
@@ -77,7 +94,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: false,
     canAccessAnalytics: false,
     canManageFactions: false,
-    canEditInterface: false
+    canEditInterface: false,
+    canManageEvents: false,
+    canGlobalEdit: false
   },
   MODERATOR: {
     canCreateArticles: true,
@@ -87,7 +106,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: false,
     canAccessAnalytics: true,
     canManageFactions: false,
-    canEditInterface: false
+    canEditInterface: false,
+    canManageEvents: false,
+    canGlobalEdit: false
   },
   ADMIN: {
     canCreateArticles: true,
@@ -97,7 +118,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: true,
     canAccessAnalytics: true,
     canManageFactions: true,
-    canEditInterface: false
+    canEditInterface: false,
+    canManageEvents: false,
+    canGlobalEdit: false
   },
   OWNER: {
     canCreateArticles: true,
@@ -107,7 +130,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: true,
     canAccessAnalytics: true,
     canManageFactions: true,
-    canEditInterface: false
+    canEditInterface: false,
+    canManageEvents: true,
+    canGlobalEdit: false
   },
   HEAD_PROJECT: {
     canCreateArticles: true,
@@ -117,7 +142,9 @@ const RANK_PERMISSIONS: Record<UserRank, RankPermissions> = {
     canChangeRanks: true,
     canAccessAnalytics: true,
     canManageFactions: true,
-    canEditInterface: true
+    canEditInterface: true,
+    canManageEvents: true,
+    canGlobalEdit: true
   }
 };
 
@@ -266,8 +293,49 @@ const Index = () => {
     heroTitle: { id: "heroTitle", text: "FUTURE IS NOW", isEditing: false },
     heroSubtitle: { id: "heroSubtitle", text: "Исследуем границы игровых технологий и делимся инсайдерской информацией", isEditing: false },
     articlesTitle: { id: "articlesTitle", text: "ПОСЛЕДНИЕ СТАТЬИ", isEditing: false },
-    blogTitle: { id: "blogTitle", text: "TECH BLOG", isEditing: false }
+    blogTitle: { id: "blogTitle", text: "TECH BLOG", isEditing: false },
+    adminPanelTitle: { id: "adminPanelTitle", text: "АДМИН ПАНЕЛЬ", isEditing: false },
+    footerTitle: { id: "footerTitle", text: "TECH BLOG", isEditing: false },
+    footerSubtitle: { id: "footerSubtitle", text: "Будущее игровых технологий начинается здесь", isEditing: false }
   });
+  
+  const [gameEvents, setGameEvents] = useState<GameEvent[]>([
+    {
+      id: 1,
+      title: "Кибер-турнир 2024",
+      description: "Глобальное соревнование между фракциями",
+      type: "TOURNAMENT",
+      startDate: "2024-10-01",
+      endDate: "2024-10-15",
+      participants: ["Cyber_Empire", "Pixel_Rebels", "Neuro_Alliance"],
+      rewards: "10000 кредитов + уникальные скины",
+      status: "UPCOMING",
+      createdBy: "Head_Project"
+    },
+    {
+      id: 2,
+      title: "Рейд на ИИ-базу",
+      description: "Кооперативный рейд всех фракций",
+      type: "RAID",
+      startDate: "2024-09-25",
+      endDate: "2024-09-26",
+      participants: ["All_Factions"],
+      rewards: "Редкие чертежи и сырье",
+      status: "ACTIVE",
+      createdBy: "Emperor_Nexus"
+    }
+  ]);
+  
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    type: "TOURNAMENT" as GameEvent['type'],
+    startDate: "",
+    endDate: "",
+    rewards: ""
+  });
+  
+  const [globalEditMode, setGlobalEditMode] = useState(false);
   
   const currentPermissions = RANK_PERMISSIONS[currentUser.rank];
   
@@ -276,7 +344,7 @@ const Index = () => {
   };
   
   const handleEditText = (id: string, newText: string) => {
-    if (!canPerformAction('canEditInterface')) return;
+    if (!canPerformAction('canEditInterface') && !globalEditMode) return;
     
     setEditableTexts(prev => ({
       ...prev,
@@ -285,12 +353,65 @@ const Index = () => {
   };
   
   const toggleEdit = (id: string) => {
-    if (!canPerformAction('canEditInterface')) return;
+    if (!canPerformAction('canEditInterface') && !globalEditMode) return;
     
     setEditableTexts(prev => ({
       ...prev,
       [id]: { ...prev[id], isEditing: !prev[id].isEditing }
     }));
+  };
+  
+  const toggleGlobalEditMode = () => {
+    if (!canPerformAction('canGlobalEdit')) return;
+    setGlobalEditMode(!globalEditMode);
+  };
+  
+  const handleAddEvent = () => {
+    if (!canPerformAction('canManageEvents')) return;
+    
+    if (newEvent.title && newEvent.description && newEvent.startDate && newEvent.endDate) {
+      const event: GameEvent = {
+        id: Date.now(),
+        ...newEvent,
+        participants: [],
+        status: 'UPCOMING',
+        createdBy: currentUser.username
+      };
+      setGameEvents([...gameEvents, event]);
+      setNewEvent({ title: "", description: "", type: "TOURNAMENT", startDate: "", endDate: "", rewards: "" });
+    }
+  };
+  
+  const handleDeleteEvent = (id: number) => {
+    if (!canPerformAction('canManageEvents')) return;
+    setGameEvents(gameEvents.filter(event => event.id !== id));
+  };
+  
+  const handleJoinEvent = (eventId: number) => {
+    setGameEvents(gameEvents.map(event => 
+      event.id === eventId && !event.participants.includes(currentUser.username)
+        ? { ...event, participants: [...event.participants, currentUser.username] }
+        : event
+    ));
+  };
+  
+  const getEventStatusColor = (status: GameEvent['status']) => {
+    switch(status) {
+      case 'UPCOMING': return 'bg-blue-500/20 text-blue-400 border-blue-400';
+      case 'ACTIVE': return 'bg-green-500/20 text-green-400 border-green-400';
+      case 'COMPLETED': return 'bg-gray-500/20 text-gray-400 border-gray-400';
+      case 'CANCELLED': return 'bg-red-500/20 text-red-400 border-red-400';
+    }
+  };
+  
+  const getEventTypeIcon = (type: GameEvent['type']) => {
+    switch(type) {
+      case 'BATTLE': return 'Swords';
+      case 'TOURNAMENT': return 'Trophy';
+      case 'RAID': return 'Shield';
+      case 'MEETING': return 'Users';
+      case 'CELEBRATION': return 'PartyPopper';
+    }
   };
 
   const handleAddArticle = () => {
@@ -396,10 +517,11 @@ const Index = () => {
   
   const EditableText = ({ id, className = "", placeholder = "" }: { id: string; className?: string; placeholder?: string }) => {
     const textData = editableTexts[id];
+    const canEdit = canPerformAction('canEditInterface') || globalEditMode;
     
     if (!textData) return null;
     
-    if (textData.isEditing && canPerformAction('canEditInterface')) {
+    if (textData.isEditing && canEdit) {
       return (
         <Input
           value={textData.text}
@@ -418,9 +540,9 @@ const Index = () => {
     
     return (
       <span
-        className={`${className} ${canPerformAction('canEditInterface') ? 'cursor-pointer hover:bg-tech-cyan/10 hover:outline hover:outline-1 hover:outline-tech-cyan/50 rounded px-1 transition-all' : ''}`}
-        onClick={() => canPerformAction('canEditInterface') && toggleEdit(id)}
-        title={canPerformAction('canEditInterface') ? 'Нажмите для редактирования' : ''}
+        className={`${className} ${canEdit ? 'cursor-pointer hover:bg-tech-cyan/10 hover:outline hover:outline-1 hover:outline-tech-cyan/50 rounded px-1 transition-all' : ''} ${globalEditMode ? 'animate-pulse ring-1 ring-red-400/50' : ''}`}
+        onClick={() => canEdit && toggleEdit(id)}
+        title={canEdit ? 'Нажмите для редактирования' : ''}
       >
         {textData.text}
       </span>
@@ -446,15 +568,27 @@ const Index = () => {
                   {currentUser.username}
                 </span>
               </div>
-              <Button
-                variant={isAdminMode ? "default" : "outline"}
-                onClick={() => setIsAdminMode(!isAdminMode)}
-                className="font-orbitron"
-                disabled={!canPerformAction('canManageUsers') && !canPerformAction('canCreateArticles')}
-              >
-                <Icon name="Settings" size={16} className="mr-2" />
-                {isAdminMode ? "ВЫЙТИ ИЗ АДМИНКИ" : "АДМИН РЕЖИМ"}
-              </Button>
+              <div className="flex gap-2">
+                {canPerformAction('canGlobalEdit') && (
+                  <Button
+                    variant={globalEditMode ? "destructive" : "secondary"}
+                    onClick={toggleGlobalEditMode}
+                    className={`font-orbitron transition-all duration-300 ${globalEditMode ? 'animate-pulse' : ''}`}
+                  >
+                    <Icon name={globalEditMode ? "Eye" : "Edit"} size={16} className="mr-2" />
+                    {globalEditMode ? "ВЫКЛ РЕЖИМ" : "МОД РЕДАКТОРА"}
+                  </Button>
+                )}
+                <Button
+                  variant={isAdminMode ? "default" : "outline"}
+                  onClick={() => setIsAdminMode(!isAdminMode)}
+                  className="font-orbitron"
+                  disabled={!canPerformAction('canManageUsers') && !canPerformAction('canCreateArticles')}
+                >
+                  <Icon name="Settings" size={16} className="mr-2" />
+                  {isAdminMode ? "ВЫЙТИ ИЗ АДМИНКИ" : "АДМИН РЕЖИМ"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -501,16 +635,24 @@ const Index = () => {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-orbitron font-bold text-tech-cyan">
                 <Icon name="Shield" size={24} className="inline mr-2" />
-                АДМИН ПАНЕЛЬ
+                <EditableText id="adminPanelTitle" className="text-2xl font-orbitron font-bold text-tech-cyan" />
               </h3>
-              <Badge className={`font-orbitron ${getRankBadgeColor(currentUser.rank)}`}>
-                <Icon name={RANK_ICONS[currentUser.rank]} size={14} className="mr-1" />
-                УРОВЕНЬ ДОСТУПА: {currentUser.rank}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge className={`font-orbitron ${getRankBadgeColor(currentUser.rank)}`}>
+                  <Icon name={RANK_ICONS[currentUser.rank]} size={14} className="mr-1" />
+                  УРОВЕНЬ ДОСТУПА: {currentUser.rank}
+                </Badge>
+                {globalEditMode && (
+                  <Badge className="bg-red-400/20 text-red-400 border-red-400 font-orbitron animate-pulse">
+                    <Icon name="Zap" size={14} className="mr-1" />
+                    ГЛОБАЛЬНЫЙ РЕДАКТОР
+                  </Badge>
+                )}
+              </div>
             </div>
             
             <Tabs defaultValue="articles" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-5 mb-6">
                 <TabsTrigger value="articles" className="font-orbitron" disabled={!canPerformAction('canCreateArticles')}>
                   <Icon name="FileText" size={16} className="mr-2" />
                   СТАТЬИ
@@ -522,6 +664,10 @@ const Index = () => {
                 <TabsTrigger value="factions" className="font-orbitron" disabled={!canPerformAction('canManageFactions')}>
                   <Icon name="Swords" size={16} className="mr-2" />
                   ФРАКЦИИ
+                </TabsTrigger>
+                <TabsTrigger value="events" className="font-orbitron" disabled={!canPerformAction('canManageEvents')}>
+                  <Icon name="Calendar" size={16} className="mr-2" />
+                  СОБЫТИЯ
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="font-orbitron" disabled={!canPerformAction('canAccessAnalytics')}>
                   <Icon name="BarChart3" size={16} className="mr-2" />
@@ -776,10 +922,10 @@ const Index = () => {
                     </DialogContent>
                   </Dialog>
                   
-                  {canPerformAction('canEditInterface') && (
-                    <Badge className="bg-red-400/20 text-red-400 border-red-400 font-orbitron animate-pulse">
+                  {(canPerformAction('canEditInterface') || globalEditMode) && (
+                    <Badge className={`font-orbitron animate-pulse ${globalEditMode ? 'bg-red-400/30 text-red-300 border-red-300' : 'bg-red-400/20 text-red-400 border-red-400'}`}>
                       <Icon name="Edit" size={14} className="mr-1" />
-                      РЕЖИМ РЕДАКТИРОВАНИЯ ИНТЕРФЕЙСА
+                      {globalEditMode ? "ГЛОБАЛЬНЫЙ РЕДАКТОР АКТИВЕН" : "РЕЖИМ РЕДАКТИРОВАНИЯ"}
                     </Badge>
                   )}
                 </div>
@@ -849,6 +995,191 @@ const Index = () => {
                             <p className={`font-orbitron text-${faction.color}`}>{faction.status}</p>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="events" className="space-y-4">
+                <div className="flex gap-4 mb-6">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        className="font-orbitron"
+                        disabled={!canPerformAction('canManageEvents')}
+                      >
+                        <Icon name="Plus" size={16} className="mr-2" />
+                        СОЗДАТЬ СОБЫТИЕ
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="font-orbitron text-tech-cyan">НОВОЕ СОБЫТИЕ</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          placeholder="Название события"
+                          value={newEvent.title}
+                          onChange={(e) => setNewEvent({...newEvent, title: e.target.value})}
+                          className="font-inter"
+                        />
+                        <Textarea
+                          placeholder="Описание события"
+                          value={newEvent.description}
+                          onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
+                          rows={3}
+                          className="font-inter"
+                        />
+                        <Select value={newEvent.type} onValueChange={(value: GameEvent['type']) => setNewEvent({...newEvent, type: value})}>
+                          <SelectTrigger className="font-inter">
+                            <SelectValue placeholder="Тип события" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="BATTLE">БИТВА</SelectItem>
+                            <SelectItem value="TOURNAMENT">ТУРНИР</SelectItem>
+                            <SelectItem value="RAID">РЕЙД</SelectItem>
+                            <SelectItem value="MEETING">СОБРАНИЕ</SelectItem>
+                            <SelectItem value="CELEBRATION">ПРАЗДНИК</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-inter text-muted-foreground">Начало</label>
+                            <Input
+                              type="date"
+                              value={newEvent.startDate}
+                              onChange={(e) => setNewEvent({...newEvent, startDate: e.target.value})}
+                              className="font-inter"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-inter text-muted-foreground">Окончание</label>
+                            <Input
+                              type="date"
+                              value={newEvent.endDate}
+                              onChange={(e) => setNewEvent({...newEvent, endDate: e.target.value})}
+                              className="font-inter"
+                            />
+                          </div>
+                        </div>
+                        <Input
+                          placeholder="Награды и призы"
+                          value={newEvent.rewards}
+                          onChange={(e) => setNewEvent({...newEvent, rewards: e.target.value})}
+                          className="font-inter"
+                        />
+                        <Button onClick={handleAddEvent} className="w-full font-orbitron">
+                          <Icon name="Calendar" size={16} className="mr-2" />
+                          СОЗДАТЬ СОБЫТИЕ
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                
+                <div className="grid gap-6">
+                  {gameEvents.map((event) => (
+                    <Card key={event.id} className="bg-card/80 border border-border/50 hover:border-tech-cyan/50 transition-all duration-300">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Icon name={getEventTypeIcon(event.type)} size={28} className="text-tech-cyan" />
+                            <div>
+                              <CardTitle className="font-orbitron text-xl">{event.title}</CardTitle>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className={`text-xs ${getEventStatusColor(event.status)}`}>
+                                  {event.status}
+                                </Badge>
+                                <Badge variant="outline" className="text-xs font-orbitron">
+                                  {event.type}
+                                </Badge>
+                                <span className="text-xs text-muted-foreground font-inter">
+                                  Организатор: {event.createdBy}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!event.participants.includes(currentUser.username) && event.status === 'UPCOMING' && (
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleJoinEvent(event.id)}
+                                className="font-orbitron"
+                              >
+                                <Icon name="UserPlus" size={14} className="mr-1" />
+                                УЧАСТВОВАТЬ
+                              </Button>
+                            )}
+                            {event.participants.includes(currentUser.username) && (
+                              <Badge className="bg-green-500/20 text-green-400 border-green-400 font-orbitron">
+                                <Icon name="Check" size={12} className="mr-1" />
+                                УЧАСТНИК
+                              </Badge>
+                            )}
+                            {canPerformAction('canManageEvents') && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm">
+                                    <Icon name="Trash2" size={14} />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle className="font-orbitron">Удалить событие?</AlertDialogTitle>
+                                    <AlertDialogDescription className="font-inter">
+                                      Это действие нельзя отменить. Событие {event.title} будет удалено навсегда.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel className="font-inter">Отмена</AlertDialogCancel>
+                                    <AlertDialogAction 
+                                      onClick={() => handleDeleteEvent(event.id)}
+                                      className="font-orbitron"
+                                    >
+                                      Удалить
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-muted-foreground font-inter mb-4">{event.description}</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
+                          <div>
+                            <span className="text-muted-foreground font-inter">Начало:</span>
+                            <p className="font-orbitron text-tech-cyan">{new Date(event.startDate).toLocaleDateString('ru-RU')}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-inter">Окончание:</span>
+                            <p className="font-orbitron">{new Date(event.endDate).toLocaleDateString('ru-RU')}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-inter">Участников:</span>
+                            <p className="font-orbitron">{event.participants.length}</p>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-inter">Награды:</span>
+                            <p className="font-orbitron text-accent">{event.rewards || 'Не указаны'}</p>
+                          </div>
+                        </div>
+                        {event.participants.length > 0 && (
+                          <div>
+                            <span className="text-sm text-muted-foreground font-inter mb-2 block">Участники:</span>
+                            <div className="flex flex-wrap gap-1">
+                              {event.participants.map((participant, index) => (
+                                <Badge key={index} variant="secondary" className="text-xs font-inter">
+                                  {participant}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}
@@ -969,9 +1300,11 @@ const Index = () => {
       <footer className="border-t border-border bg-card/30 py-12">
         <div className="container mx-auto px-4">
           <div className="text-center">
-            <h4 className="text-2xl font-orbitron font-bold text-tech-cyan mb-4">TECH BLOG</h4>
+            <h4 className="text-2xl font-orbitron font-bold text-tech-cyan mb-4">
+              <EditableText id="footerTitle" className="text-2xl font-orbitron font-bold text-tech-cyan" />
+            </h4>
             <p className="text-muted-foreground font-inter mb-6">
-              Будущее игровых технологий начинается здесь
+              <EditableText id="footerSubtitle" className="text-muted-foreground font-inter" />
             </p>
             <div className="flex justify-center space-x-6">
               <Button variant="ghost" size="sm">
